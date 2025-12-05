@@ -9,10 +9,10 @@ export default function Home() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-black rounded-full"></div>
-          <p className="text-black font-bold">Loading...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-slate-800 border-t-purple-500 animate-spin"></div>
+          <p className="text-slate-400 font-medium">Loading...</p>
         </div>
       </div>
     );

@@ -12,4 +12,5 @@ html,
 body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  background-color: #020617; /* slate-950 - prevents white flash */
 }

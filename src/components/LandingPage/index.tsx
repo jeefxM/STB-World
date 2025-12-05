@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import styles from './LandingPage.module.css';
@@ -7,10 +8,6 @@ import styles from './LandingPage.module.css';
 export const LandingPage = () => {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  const handleGameSelection = (gameId: string) => {
-    router.push(`/game/${gameId}`);
-  };
 
   // Ensure video plays immediately
   useEffect(() => {
@@ -47,22 +44,24 @@ export const LandingPage = () => {
         {/* Game Options */}
         <div className={styles.gameOptions}>
           {/* Play with 2 WLD */}
-          <button
-            onClick={() => handleGameSelection('game-wld')}
+          <Link
+            href="/game/game-wld"
+            prefetch={true}
             className={`${styles.gameButton} ${styles.buttonWLD}`}
           >
             <span className={styles.buttonLabel}>Play with 2</span>
             <span className={styles.buttonAmount}>$WLD</span>
-          </button>
+          </Link>
 
           {/* Play with 1 USDC */}
-          <button
-            onClick={() => handleGameSelection('game-usdc')}
+          <Link
+            href="/game/game-usdc"
+            prefetch={true}
             className={`${styles.gameButton} ${styles.buttonUSDC}`}
           >
             <span className={styles.buttonLabel}>Play with 1</span>
             <span className={styles.buttonAmount}>$USDC</span>
-          </button>
+          </Link>
 
           {/* Your Game Here */}
           <button className={`${styles.gameButton} ${styles.buttonPlaceholder}`}>

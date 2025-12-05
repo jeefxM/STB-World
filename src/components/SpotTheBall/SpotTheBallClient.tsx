@@ -6,20 +6,15 @@ import { worldchain } from "viem/chains";
 import { MiniKit } from "@worldcoin/minikit-js";
 
 import GameABI from "@/abi/gameABI";
-import { getGameUUID } from "@/config/gameIdMap";
-import { supabase } from "@/lib/supabaseClient";
 
 import { GameHeader } from "./GameHeader";
 import { GameImageCanvas } from "./GameImageCanvas";
 import { GameControls } from "./GameControls";
-import { ErrorToast } from "./ErrorToast";
-import { SuccessModal } from "./SuccessModal";
 import { BottomNav } from "@/components/BottomNav";
 import {
   GameStatus,
   type Coordinate,
   type GameData,
-  type SpotTheBallProps,
 } from "./types";
 
 const publicClient = createPublicClient({
@@ -29,24 +24,27 @@ const publicClient = createPublicClient({
   ),
 });
 
-// WLD Token address on Worldchain
-const WLD_TOKEN_ADDRESS = "0x2cFc85d8E48F8EAB294be644d9E25C3030863003";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+interface SpotTheBallClientProps {
+  gameId: string;
+  initialGameData: GameData;
+}
 
-export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
-  const [gameData, setGameData] = useState<GameData>({
-    contractAddress: null,
-    imageUrl: "",
-    title: "Spot The Ball",
-    description: "Find where the ball is hidden and win prizes!",
-    gameName: "",
-  });
-  const [isLoadingGame, setIsLoadingGame] = useState(true);
+/**
+ * Client component that receives pre-fetched game data from the server
+ * Only fetches contract data client-side (needs to be real-time)
+ */
+export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({ 
+  gameId, 
+  initialGameData 
+}) => {
+  // Use pre-fetched data immediately - no loading state needed for Supabase!
+  const [gameData] = useState<GameData>(initialGameData);
 
   const [mintPrice, setMintPrice] = useState<bigint | null>(null);
   const [prizePool, setPrizePool] = useState<bigint | null>(null);
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [isLoadingContract, setIsLoadingContract] = useState(true);
 
   const [coord, setCoord] = useState<Coordinate | null>(null);
   const [transactionState, setTransactionState] = useState<"idle" | "pending" | "success" | "error">("idle");
@@ -54,59 +52,10 @@ export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
 
   const hasLoadedContractData = useRef(false);
 
-  useEffect(() => {
-    const fetchGameData = async () => {
-      const targetGameId = gameId || process.env.NEXT_PUBLIC_GAME_ID;
-
-      if (!targetGameId) {
-        setGameData((prev) => ({
-          ...prev,
-          description: "No game configured",
-        }));
-        setIsLoadingGame(false);
-        return;
-      }
-
-      const gameUUID = getGameUUID(targetGameId);
-
-      try {
-        const { data, error } = await supabase
-          .from("games")
-          .select("*")
-          .eq("game_id", gameUUID)
-          .single();
-
-        if (error) {
-          setGameData((prev) => ({
-            ...prev,
-            description: "Failed to load game",
-          }));
-        } else if (data) {
-          setGameData({
-            contractAddress: data.contract_address as `0x${string}`,
-            imageUrl: data.challenge_image_url,
-            title: data.name || "Spot The Ball",
-            description: data.custom_prompt || "Find the ball!",
-            gameName: data.name,
-          });
-        }
-      } catch (err) {
-        console.error("Error:", err);
-      } finally {
-        setIsLoadingGame(false);
-      }
-    };
-
-    fetchGameData();
-  }, [gameId]);
-
+  // Fetch contract data (this still needs to be client-side for real-time data)
   useEffect(() => {
     const readContractData = async () => {
-      if (
-        hasLoadedContractData.current ||
-        !gameData.contractAddress ||
-        isLoadingGame
-      ) {
+      if (hasLoadedContractData.current || !gameData.contractAddress) {
         return;
       }
 
@@ -143,11 +92,13 @@ export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
       } catch (e) {
         console.error("Contract read error:", e);
         hasLoadedContractData.current = false;
+      } finally {
+        setIsLoadingContract(false);
       }
     };
 
     readContractData();
-  }, [gameData.contractAddress, isLoadingGame]);
+  }, [gameData.contractAddress]);
 
   const handleCoordSelect = useCallback((newCoord: Coordinate) => {
     setCoord(newCoord);
@@ -263,46 +214,6 @@ export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
     }
   }, [coord, gameData.contractAddress, mintPrice, paymentToken]);
 
-  if (isLoadingGame) {
-    return (
-      <div className="relative bg-slate-950 flex flex-col min-h-screen pb-24">
-        {/* Skeleton Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-20 bg-slate-800 rounded-lg animate-pulse" />
-            <div className="h-10 w-20 bg-slate-800 rounded-lg animate-pulse" />
-          </div>
-          <div className="h-6 w-16 bg-slate-800 rounded-full animate-pulse" />
-        </div>
-        
-        {/* Skeleton Image Area */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full aspect-square max-w-lg bg-slate-800 rounded-2xl animate-pulse flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full border-4 border-slate-700 border-t-purple-500 animate-spin" />
-              <p className="mt-4 text-slate-500 text-sm">Loading game...</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Skeleton Controls */}
-        <div className="px-4 py-3 space-y-3">
-          <div className="h-12 bg-slate-800 rounded-xl animate-pulse" />
-          <div className="h-14 bg-slate-800 rounded-xl animate-pulse" />
-        </div>
-        
-        {/* Bottom Nav Skeleton */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 px-4 py-3">
-          <div className="flex justify-around">
-            <div className="h-12 w-16 bg-slate-800 rounded-lg animate-pulse" />
-            <div className="h-12 w-16 bg-slate-800 rounded-lg animate-pulse" />
-            <div className="h-12 w-16 bg-slate-800 rounded-lg animate-pulse" />
-          </div>
-        </nav>
-      </div>
-    );
-  }
-
   return (
     <div className="relative bg-slate-950 flex flex-col min-h-screen pb-24">
       <GameHeader
@@ -310,7 +221,7 @@ export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
         mintPrice={mintPrice}
         gameStatus={gameStatus}
         paymentToken={paymentToken}
-        isLoading={false}
+        isLoading={isLoadingContract}
       />
 
       <GameImageCanvas
@@ -337,4 +248,4 @@ export const SpotTheBall: React.FC<SpotTheBallProps> = ({ gameId }) => {
   );
 };
 
-export default SpotTheBall;
+export default SpotTheBallClient;

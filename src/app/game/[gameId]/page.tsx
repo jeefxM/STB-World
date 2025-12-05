@@ -1,11 +1,40 @@
-'use client';
+import { getGameData, type GameData } from '@/lib/supabaseServer';
+import { getGameUUID } from '@/config/gameIdMap';
+import { SpotTheBallClient } from '@/components/SpotTheBall/SpotTheBallClient';
 
-import { SpotTheBall } from '@/components/SpotTheBall';
-import { useParams } from 'next/navigation';
+interface GamePageProps {
+  params: Promise<{ gameId: string }>;
+}
 
-export default function GamePage() {
-  const params = useParams();
-  const gameId = params.gameId as string;
-
-  return <SpotTheBall gameId={gameId} />;
+export default async function GamePage({ params }: GamePageProps) {
+  const { gameId } = await params;
+  const gameUUID = getGameUUID(gameId);
+  
+  // Fetch game data SERVER-SIDE (fast!)
+  const gameData = await getGameData(gameUUID);
+  
+  if (!gameData) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 text-lg font-medium">Game not found</p>
+          <p className="text-slate-500 text-sm mt-2">The game &quot;{gameId}&quot; could not be loaded.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Pass pre-fetched data to Client Component
+  return (
+    <SpotTheBallClient
+      gameId={gameId}
+      initialGameData={{
+        contractAddress: gameData.contract_address as `0x${string}`,
+        imageUrl: gameData.challenge_image_url,
+        title: gameData.name || 'Spot The Ball',
+        description: gameData.custom_prompt || 'Find the ball!',
+        gameName: gameData.name,
+      }}
+    />
+  );
 }
