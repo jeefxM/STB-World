@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Submission saved:', data.id);
+    console.log('✅ Submission saved succesfully:', data.id);
 
     return NextResponse.json({
       success: true,
