@@ -1,210 +1,397 @@
 "use client";
 
-import { Marble } from "@worldcoin/mini-apps-ui-kit-react";
-import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ExternalLink, Trophy, Clock, XCircle } from "lucide-react";
+import Image from "next/image";
+import { Marble } from "@worldcoin/mini-apps-ui-kit-react";
+import { 
+  Target, 
+  Clock, 
+  CheckCircle, 
+  XCircle,
+  ChevronRight,
+  User,
+  X
+} from "lucide-react";
 
-interface Game {
-  id: number;
+interface Submission {
+  id: string;
   game_id: string;
-  name: string;
-  date: string;
-  status: string;
-  prize: string;
+  player_wallet: string;
+  x_coordinate: number;
+  y_coordinate: number;
+  tx_hash: string | null;
+  created_at: string;
+  game_status?: string;
+  game_name?: string;
+  game_image_url?: string;
+  prize_won?: string;
+}
+
+interface ProfileStats {
+  totalGuesses: number;
+  wins: number;
+  wldWon: number;
 }
 
 export const Profile = () => {
   const { data: session } = useSession();
-  const [previousGames, setPreviousGames] = useState<Game[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [stats, setStats] = useState<ProfileStats>({ totalGuesses: 0, wins: 0, wldWon: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("games")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(10);
+    const fetchSubmissions = async () => {
+      if (!session?.user?.walletAddress) {
+        setIsLoading(false);
+        return;
+      }
 
-        if (error) {
-          console.error("Error fetching games:", error);
-        } else {
-          setPreviousGames(
-            data?.map((game: any) => ({
-              id: game.id,
-              game_id: game.game_id,
-              name: game.name || `Game #${game.id}`,
-              date: new Date(game.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              }),
-              status: game.status || "Pending",
-              prize: game.prize || "—",
-            })) || []
-          );
+      try {
+        const response = await fetch(
+          `/api/submissions?playerWallet=${session.user.walletAddress}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSubmissions(data.submissions || []);
+          
+          const totalGuesses = data.submissions?.length || 0;
+          const wins = 0;
+          const wldWon = 0;
+          
+          setStats({ totalGuesses, wins, wldWon });
         }
-      } catch (err) {
-        console.error("Unexpected error:", err);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchGames();
+    fetchSubmissions();
   }, [session]);
 
-  // Get status styling
-  const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "won":
-        return {
-          bg: "bg-emerald-500/20",
-          border: "border-emerald-500/40",
-          text: "text-emerald-400",
-          icon: <Trophy className="w-3 h-3" />,
-        };
-      case "pending":
-      case "active":
-        return {
-          bg: "bg-amber-500/20",
-          border: "border-amber-500/40",
-          text: "text-amber-400",
-          icon: <Clock className="w-3 h-3" />,
-        };
-      default:
-        return {
-          bg: "bg-slate-500/20",
-          border: "border-slate-500/40",
-          text: "text-slate-400",
-          icon: <XCircle className="w-3 h-3" />,
-        };
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays} days ago`;
+  };
+
+  const getStatusStyle = (submission: Submission) => {
+    const status = submission.game_status?.toLowerCase() || "active";
+    const prizeWon = submission.prize_won;
+
+    if (prizeWon && parseFloat(prizeWon) > 0) {
+      return {
+        icon: <CheckCircle className="w-5 h-5" />,
+        bg: "bg-emerald-500/20",
+        border: "border-emerald-500/50",
+        iconColor: "text-emerald-400",
+      };
+    } else if (status === "active" || status === "started") {
+      return {
+        icon: <Clock className="w-5 h-5" />,
+        bg: "bg-amber-500/20",
+        border: "border-amber-500/50",
+        iconColor: "text-amber-400",
+      };
+    } else {
+      return {
+        icon: <XCircle className="w-5 h-5" />,
+        bg: "bg-red-500/20",
+        border: "border-red-500/50",
+        iconColor: "text-red-400",
+      };
     }
   };
 
   return (
-    <div className="flex flex-col h-full space-y-6 p-4">
-      {/* Profile Header */}
-      <div className="text-center space-y-3 flex flex-col items-center pt-4">
-        {/* Avatar */}
-        <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center overflow-hidden border-2 border-purple-500/50 bg-slate-800">
-          {session?.user?.profilePictureUrl ? (
-            <Marble
-              src={session.user.profilePictureUrl}
-              className="w-full h-full"
-            />
+    <>
+      <div className="flex flex-col h-full p-4 space-y-6">
+        {/* Profile Header */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#1de5d1] flex items-center justify-center overflow-hidden">
+            {session?.user?.profilePictureUrl ? (
+              <Marble
+                src={session.user.profilePictureUrl}
+                className="w-full h-full"
+              />
+            ) : (
+              <User className="w-8 h-8 text-black" />
+            )}
+          </div>
+
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-[hsl(var(--foreground))]">
+              {session?.user?.username || "Player"}
+            </h2>
+            <p className="text-[hsl(var(--muted-foreground))] text-sm font-mono">
+              {session?.user?.walletAddress
+                ? `${session.user.walletAddress.slice(0, 6)}...${session.user.walletAddress.slice(-4)}`
+                : "Not connected"}
+            </p>
+          </div>
+        </div>
+
+        {/* Your Guesses Section */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-[hsl(var(--foreground))]">
+              Your Guesses
+            </h3>
+            <span className="text-sm text-[hsl(var(--muted-foreground))]">
+              {stats.totalGuesses} total
+            </span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-8 h-8 rounded-full border-2 border-[hsl(var(--secondary))] border-t-[#1de5d1] animate-spin mb-3" />
+                <p className="text-[hsl(var(--muted-foreground))] text-sm">Loading...</p>
+              </div>
+            ) : submissions.length > 0 ? (
+              submissions.map((submission) => {
+                const statusStyle = getStatusStyle(submission);
+                return (
+                  <button
+                    key={submission.id}
+                    onClick={() => setSelectedSubmission(submission)}
+                    className="w-full glass-card p-4 flex items-center gap-4 text-left hover:bg-[hsl(var(--accent))]/10 transition-colors cursor-pointer"
+                  >
+                    {/* Status Icon */}
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center border ${statusStyle.bg} ${statusStyle.border}`}
+                    >
+                      <span className={statusStyle.iconColor}>
+                        {statusStyle.icon}
+                      </span>
+                    </div>
+
+                    {/* Coordinates & Time */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-[hsl(var(--foreground))]">
+                          ({submission.x_coordinate}, {submission.y_coordinate})
+                        </p>
+                        {submission.prize_won && parseFloat(submission.prize_won) > 0 && (
+                          <span className="text-emerald-400 text-sm font-semibold">
+                            +{submission.prize_won} WLD
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                        {getRelativeTime(submission.created_at)}
+                      </p>
+                    </div>
+
+                    {/* Arrow */}
+                    <ChevronRight className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+                  </button>
+                );
+              })
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-[hsl(var(--secondary))] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+                </div>
+                <p className="text-[hsl(var(--foreground))] font-medium">No guesses yet</p>
+                <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">
+                  Start playing to see your guesses here
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Submission Detail Modal */}
+      {selectedSubmission && (
+        <SubmissionDetailModal
+          submission={selectedSubmission}
+          onClose={() => setSelectedSubmission(null)}
+          getRelativeTime={getRelativeTime}
+        />
+      )}
+    </>
+  );
+};
+
+// Separate component for the modal to handle image loading
+const SubmissionDetailModal: React.FC<{
+  submission: Submission;
+  onClose: () => void;
+  getRelativeTime: (dateString: string) => string;
+}> = ({ submission, onClose, getRelativeTime }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  const [imageDimensions, setImageDimensions] = useState<{
+    natural: { width: number; height: number };
+    rendered: { width: number; height: number };
+    offset: { x: number; y: number };
+  } | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Calculate dimensions when image loads
+  const handleImageLoad = () => {
+    if (!imgRef.current || !containerRef.current) return;
+
+    const img = imgRef.current;
+    const container = containerRef.current;
+    const containerRect = container.getBoundingClientRect();
+
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+
+    const imageAspect = naturalWidth / naturalHeight;
+    const containerAspect = containerWidth / containerHeight;
+
+    let renderWidth: number;
+    let renderHeight: number;
+    let offsetX: number;
+    let offsetY: number;
+
+    if (imageAspect > containerAspect) {
+      renderWidth = containerWidth;
+      renderHeight = containerWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (containerHeight - renderHeight) / 2;
+    } else {
+      renderHeight = containerHeight;
+      renderWidth = containerHeight * imageAspect;
+      offsetX = (containerWidth - renderWidth) / 2;
+      offsetY = 0;
+    }
+
+    setImageDimensions({
+      natural: { width: naturalWidth, height: naturalHeight },
+      rendered: { width: renderWidth, height: renderHeight },
+      offset: { x: offsetX, y: offsetY },
+    });
+    setImageLoaded(true);
+  };
+
+  // Calculate crosshair position
+  const getCrosshairPosition = () => {
+    if (!imageDimensions) return { left: '50%', top: '50%' };
+
+    const { natural, rendered, offset } = imageDimensions;
+    
+    // Calculate position within rendered image
+    const xPercent = submission.x_coordinate / natural.width;
+    const yPercent = submission.y_coordinate / natural.height;
+    
+    const left = offset.x + (xPercent * rendered.width);
+    const top = offset.y + (yPercent * rendered.height);
+
+    return { left: `${left}px`, top: `${top}px` };
+  };
+
+  const crosshairPos = getCrosshairPosition();
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-lg bg-[hsl(var(--card))] rounded-2xl overflow-hidden border border-[hsl(var(--border))]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))]">
+          <div>
+            <h3 className="font-bold text-[hsl(var(--foreground))]">Your Guess</h3>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              ({submission.x_coordinate}, {submission.y_coordinate})
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center hover:bg-[hsl(var(--accent))] transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Image with Crosshair */}
+        <div 
+          ref={containerRef}
+          className="relative aspect-square bg-[hsl(var(--secondary))]"
+        >
+          {submission.game_image_url ? (
+            <>
+              <img
+                ref={imgRef}
+                src={submission.game_image_url}
+                alt="Game"
+                className="absolute inset-0 w-full h-full object-contain"
+                onLoad={handleImageLoad}
+              />
+              
+              {/* Crosshair Overlay */}
+              {imageLoaded && imageDimensions && (
+                <div 
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: crosshairPos.left,
+                    top: crosshairPos.top,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  {/* Crosshair horizontal line */}
+                  <div 
+                    className="absolute bg-[#1de5d1] shadow-lg"
+                    style={{ width: '40px', height: '3px', left: '-20px', top: '-1.5px' }}
+                  />
+                  {/* Crosshair vertical line */}
+                  <div 
+                    className="absolute bg-[#1de5d1] shadow-lg"
+                    style={{ width: '3px', height: '40px', left: '-1.5px', top: '-20px' }}
+                  />
+                  
+                  {/* Center circle */}
+                  <div 
+                    className="absolute w-5 h-5 rounded-full border-3 border-[#1de5d1] bg-[#1de5d1]/30"
+                    style={{ left: '-10px', top: '-10px', boxShadow: '0 0 20px rgba(29, 229, 209, 0.6)' }}
+                  />
+                  
+                  {/* Pulsing ring */}
+                  <div 
+                    className="absolute w-8 h-8 rounded-full border-2 border-[#1de5d1] animate-ping opacity-50"
+                    style={{ left: '-16px', top: '-16px' }}
+                  />
+                </div>
+              )}
+            </>
           ) : (
-            <span className="text-4xl">👤</span>
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="text-[hsl(var(--muted-foreground))]">Image not available</p>
+            </div>
           )}
         </div>
 
-        {/* Username */}
-        <h2 className="text-2xl font-bold text-white">
-          {session?.user?.username || "Player"}
-        </h2>
-
-        {/* Wallet Address */}
-        <p className="text-slate-400 text-xs font-mono bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
-          {session?.user?.walletAddress
-            ? `${session.user.walletAddress.slice(0, 6)}...${session.user.walletAddress.slice(-4)}`
-            : "Not connected"}
-        </p>
-      </div>
-
-      {/* Create Game Button */}
-      <div>
-        <a
-          href="https://spottheball.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="
-            flex items-center justify-center gap-2
-            w-full py-4 px-6
-            bg-gradient-to-r from-purple-600 to-violet-600
-            hover:from-purple-500 hover:to-violet-500
-            text-white font-semibold text-base
-            rounded-xl
-            shadow-lg shadow-purple-500/25
-            transition-all duration-200
-            active:scale-[0.98]
-          "
-        >
-          <span>Create New Game</span>
-          <ExternalLink className="w-4 h-4" />
-        </a>
-      </div>
-
-      {/* Previous Games */}
-      <div className="flex-1">
-        <h3 className="text-lg font-bold text-white mb-4 pb-2 border-b border-slate-700">
-          Previous Games
-        </h3>
-
-        <div className="space-y-3">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-8 h-8 rounded-full border-2 border-slate-700 border-t-purple-500 animate-spin mb-3" />
-              <p className="text-slate-500 text-sm">Loading history...</p>
-            </div>
-          ) : previousGames.length > 0 ? (
-            previousGames.map((game) => {
-              const statusStyle = getStatusStyle(game.status);
-              return (
-                <div
-                  key={game.id}
-                  className="
-                    bg-slate-800/50
-                    border border-slate-700/50
-                    p-4 rounded-xl
-                    flex items-center justify-between
-                  "
-                >
-                  {/* Left side - Game info */}
-                  <div className="space-y-1">
-                    <p className="font-semibold text-white">{game.name}</p>
-                    <p className="text-sm text-slate-400">{game.date}</p>
-                  </div>
-
-                  {/* Right side - Status & Prize */}
-                  <div className="text-right space-y-1.5">
-                    <span
-                      className={`
-                        inline-flex items-center gap-1.5
-                        px-2.5 py-1
-                        text-xs font-semibold
-                        rounded-full
-                        border
-                        ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text}
-                      `}
-                    >
-                      {statusStyle.icon}
-                      {game.status}
-                    </span>
-                    {game.prize !== "—" && (
-                      <p className="text-sm font-mono text-slate-300">
-                        {game.prize}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trophy className="w-8 h-8 text-slate-600" />
-              </div>
-              <p className="text-slate-400 font-medium">No games played yet</p>
-              <p className="text-slate-500 text-sm mt-1">
-                Start playing to see your history here
-              </p>
-            </div>
-          )}
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-[hsl(var(--border))] text-center">
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+            {getRelativeTime(submission.created_at)}
+          </p>
         </div>
       </div>
     </div>
   );
 };
+

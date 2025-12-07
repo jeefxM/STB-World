@@ -46,7 +46,7 @@ export const walletAuth = async () => {
 
   // Manually redirect using current origin (should be ngrok URL if accessed correctly)
   if (signInResult?.ok) {
-    window.location.href = "/home";
+    window.location.href = "/";
   } else if (signInResult?.error) {
     console.error("Sign in error:", signInResult.error);
   }

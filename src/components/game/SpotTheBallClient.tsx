@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { createPublicClient, http } from "viem";
 import { worldchain } from "viem/chains";
 import { MiniKit } from "@worldcoin/minikit-js";
+import { ArrowLeft } from "lucide-react";
 
 import GameABI from "@/abi/gameABI";
+import { Button } from "@/components/core/ui/Button";
 
-import { GameHeader } from "./GameHeader";
 import { GameImageCanvas } from "./GameImageCanvas";
 import { GameControls } from "./GameControls";
-import { BottomNav } from "@/components/BottomNav";
 import {
   GameStatus,
   type Coordinate,
@@ -24,35 +26,51 @@ const publicClient = createPublicClient({
   ),
 });
 
+interface Submission {
+  id: string;
+  x: number;
+  y: number;
+  timestamp: Date;
+  txHash?: string;
+}
+
 interface SpotTheBallClientProps {
   gameId: string;
   initialGameData: GameData;
 }
 
 /**
- * Client component that receives pre-fetched game data from the server
- * Only fetches contract data client-side (needs to be real-time)
+ * SpotTheBallClient - Main game component
+ * Premium mobile-first design for World miniapp
  */
 export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({ 
   gameId, 
   initialGameData 
 }) => {
-  // Use pre-fetched data immediately - no loading state needed for Supabase!
+  const router = useRouter();
+  const { data: session } = useSession();
+  
+  // Use pre-fetched data immediately
   const [gameData] = useState<GameData>(initialGameData);
 
+  // Contract state
   const [mintPrice, setMintPrice] = useState<bigint | null>(null);
   const [prizePool, setPrizePool] = useState<bigint | null>(null);
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
 
+  // Game state
   const [coord, setCoord] = useState<Coordinate | null>(null);
   const [transactionState, setTransactionState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  
+  // Submissions tracking
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   const hasLoadedContractData = useRef(false);
 
-  // Fetch contract data (this still needs to be client-side for real-time data)
+  // Fetch contract data (client-side for real-time data)
   useEffect(() => {
     const readContractData = async () => {
       if (hasLoadedContractData.current || !gameData.contractAddress) {
@@ -102,6 +120,8 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
 
   const handleCoordSelect = useCallback((newCoord: Coordinate) => {
     setCoord(newCoord);
+    setTransactionState("idle");
+    setErrorMessage("");
   }, []);
 
   const handleReset = useCallback(() => {
@@ -109,6 +129,10 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
     setTransactionState("idle");
     setErrorMessage("");
   }, []);
+
+  const handleBack = useCallback(() => {
+    router.push("/");
+  }, [router]);
 
   const handleSubmit = useCallback(async () => {
     if (!coord || !gameData.contractAddress || !mintPrice || paymentToken === null) {
@@ -130,7 +154,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
       let transactionPayload;
 
       if (isNativePayment) {
-        // NATIVE ETH PAYMENT - Simple play() call with value
+        // NATIVE ETH PAYMENT
         console.log("🟢 Using native ETH payment");
         
         transactionPayload = {
@@ -145,11 +169,11 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
           ],
         };
       } else {
-        // ERC20 PAYMENT WITH PERMIT2 - MiniKit handles the signature!
+        // ERC20 PAYMENT WITH PERMIT2
         console.log("🔵 Using Permit2 for ERC20 payment");
         
         const nonce = Date.now().toString();
-        const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(); // 30 min from now
+        const deadline = Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString();
 
         transactionPayload = {
           transaction: [
@@ -162,7 +186,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
                 coord.x,
                 nonce,
                 deadline,
-                "PERMIT2_SIGNATURE_PLACEHOLDER_0", // MiniKit replaces this!
+                "PERMIT2_SIGNATURE_PLACEHOLDER_0",
               ],
             },
           ],
@@ -178,14 +202,6 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
             },
           ],
         };
-
-        console.log("📝 Permit2 config:", {
-          token: paymentToken,
-          amount: mintPrice.toString(),
-          spender: gameData.contractAddress,
-          nonce,
-          deadline,
-        });
       }
 
       console.log("📤 Sending transaction...");
@@ -196,8 +212,62 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
       if (finalPayload.status === "success") {
         console.log("✅ Transaction successful!");
         console.log("🔗 TX ID:", finalPayload.transaction_id);
+        
+        // Save submission to Supabase via API
+        try {
+          const response = await fetch('/api/submissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              gameId: gameId, // Use the gameId prop (UUID)
+              playerWallet: session?.user?.walletAddress || '', // Player wallet from session
+              xCoordinate: coord.x,
+              yCoordinate: coord.y,
+              txHash: finalPayload.transaction_id,
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("💾 Submission saved to Supabase:", data.submission?.id);
+          } else {
+            const errorData = await response.json();
+            console.error("⚠️ Failed to save submission:", errorData.error);
+          }
+        } catch (saveError) {
+          console.error("⚠️ Error saving submission:", saveError);
+          // Don't fail the transaction if save fails
+        }
+        
+        // Add to local submissions state
+        const newSubmission: Submission = {
+          id: finalPayload.transaction_id || `sub-${Date.now()}`,
+          x: coord.x,
+          y: coord.y,
+          timestamp: new Date(),
+          txHash: finalPayload.transaction_id,
+        };
+        setSubmissions(prev => [newSubmission, ...prev]);
+        
         setTransactionState("success");
         setCoord(null);
+        
+        // Refresh prize pool
+        try {
+          const newPool = await publicClient.readContract({
+            address: gameData.contractAddress,
+            abi: GameABI,
+            functionName: "prizePool",
+          });
+          setPrizePool(newPool as bigint);
+        } catch {
+          // Silently fail
+        }
+        
+        // Redirect to profile page after a brief delay for user feedback
+        setTimeout(() => {
+          router.push("/?tab=profile");
+        }, 1500);
       } else {
         console.error("❌ Transaction failed:", finalPayload);
         setTransactionState("error");
@@ -215,23 +285,40 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
   }, [coord, gameData.contractAddress, mintPrice, paymentToken]);
 
   return (
-    <div className="relative bg-slate-950 flex flex-col min-h-screen pb-24">
-      <GameHeader
-        prizePool={prizePool}
-        mintPrice={mintPrice}
-        gameStatus={gameStatus}
-        paymentToken={paymentToken}
-        isLoading={isLoadingContract}
-      />
+    <div className="flex flex-col min-h-screen bg-game">
+      {/* Back Button - Absolute positioned */}
+      <div className="absolute top-4 left-4 z-50">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleBack}
+          className="w-10 h-10 rounded-xl bg-[hsl(var(--secondary))]/80 backdrop-blur-sm"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+      </div>
 
-      <GameImageCanvas
-        imageUrl={gameData.imageUrl}
-        coord={coord}
-        onCoordSelect={handleCoordSelect}
-        isDisabled={transactionState === "pending"}
-        gameStatus={gameStatus}
-      />
+      {/* Tap Instruction - Centered but accounting for back button */}
+      <div className="absolute top-4 inset-x-0 flex justify-center z-40 pointer-events-none">
+        <div className="glass-card px-4 py-2 text-xs text-[hsl(var(--muted-foreground))]">
+          Tap to place your guess
+        </div>
+      </div>
 
+      {/* Full Canvas Area */}
+      <div className="flex-1 px-2 pt-16 pb-4">
+        <div className="h-[75vh]">
+          <GameImageCanvas
+            imageUrl={gameData.imageUrl}
+            coord={coord}
+            onCoordSelect={handleCoordSelect}
+            isDisabled={transactionState === "pending"}
+            gameStatus={gameStatus}
+          />
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
       <GameControls
         coord={coord}
         onSubmit={handleSubmit}
@@ -240,10 +327,38 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
         transactionState={transactionState}
         gameStatus={gameStatus}
         isDisabled={transactionState === "pending"}
+        paymentToken={paymentToken}
       />
 
-      {/* Bottom Navigation */}
-      <BottomNav gameId={gameId} />
+      {/* Success Toast */}
+      {transactionState === "success" && (
+        <div className="fixed top-20 left-4 right-4 z-50 animate-slide-down">
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-lg">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/30">
+              <span className="text-xl">🎯</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-400">Guess Submitted!</p>
+              <p className="text-xs text-emerald-400/70">Good luck! Check your submissions below.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {transactionState === "error" && errorMessage && (
+        <div className="fixed top-20 left-4 right-4 z-50 animate-slide-down">
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/20 border border-red-500/30 backdrop-blur-lg">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/30">
+              <span className="text-xl">❌</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-400">Transaction Failed</p>
+              <p className="text-xs text-red-400/70 line-clamp-2">{errorMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { getGameData, type GameData } from '@/lib/supabaseServer';
 import { getGameUUID } from '@/config/gameIdMap';
-import { SpotTheBallClient } from '@/components/SpotTheBall/SpotTheBallClient';
+import { SpotTheBallClient } from '@/components/game/SpotTheBallClient';
 
 interface GamePageProps {
   params: Promise<{ gameId: string }>;
@@ -27,7 +27,7 @@ export default async function GamePage({ params }: GamePageProps) {
   // Pass pre-fetched data to Client Component
   return (
     <SpotTheBallClient
-      gameId={gameId}
+      gameId={gameUUID}
       initialGameData={{
         contractAddress: gameData.contract_address as `0x${string}`,
         imageUrl: gameData.challenge_image_url,

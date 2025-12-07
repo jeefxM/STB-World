@@ -27,6 +27,7 @@ export interface GameData {
   challenge_image_url: string;
   name: string;
   custom_prompt: string | null;
+  total_submissions: number;
 }
 
 /**

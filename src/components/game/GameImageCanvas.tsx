@@ -109,7 +109,7 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
 
   // Convert screen coordinates to canonical image coordinates
   const screenToCanonical = useCallback(
-    (clientX: number, clientY: number): Coordinate | null => {
+    (clientX: number, clientY: number, allowClamp: boolean = false): Coordinate | null => {
       if (!imageDimensions || !containerRef.current) return null;
 
       const containerRect = containerRef.current.getBoundingClientRect();
@@ -119,28 +119,33 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
       const { offset, rendered, scale, natural } = imageDimensions;
 
       // Check if position is within actual image area (not letterbox)
-      if (
+      const isOutside = 
         x < offset.x ||
         x > offset.x + rendered.width ||
         y < offset.y ||
-        y > offset.y + rendered.height
-      ) {
+        y > offset.y + rendered.height;
+
+      if (isOutside && !allowClamp) {
         return null;
       }
 
+      // Clamp position to image bounds
+      const clampedX = Math.max(offset.x, Math.min(x, offset.x + rendered.width));
+      const clampedY = Math.max(offset.y, Math.min(y, offset.y + rendered.height));
+
       // Convert to image-relative coordinates
-      const imageX = x - offset.x;
-      const imageY = y - offset.y;
+      const imageX = clampedX - offset.x;
+      const imageY = clampedY - offset.y;
 
       // Convert to canonical (natural) coordinates
       const canonicalX = Math.round(imageX * scale.x);
       const canonicalY = Math.round(imageY * scale.y);
 
       // Clamp to valid range
-      const clampedX = Math.max(0, Math.min(canonicalX, natural.width - 1));
-      const clampedY = Math.max(0, Math.min(canonicalY, natural.height - 1));
+      const finalX = Math.max(0, Math.min(canonicalX, natural.width - 1));
+      const finalY = Math.max(0, Math.min(canonicalY, natural.height - 1));
 
-      return { x: clampedX, y: clampedY };
+      return { x: finalX, y: finalY };
     },
     [imageDimensions]
   );
@@ -196,14 +201,23 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
         clientY = e.clientY;
       }
 
-      // Update touch position for magnifier
+      // Update touch position for magnifier (clamped to container)
       const containerRect = containerRef.current!.getBoundingClientRect();
+      const { offset, rendered } = imageDimensions;
+      
+      // Clamp touch position to image bounds for visual feedback
+      const rawX = clientX - containerRect.left;
+      const rawY = clientY - containerRect.top;
+      const clampedTouchX = Math.max(offset.x, Math.min(rawX, offset.x + rendered.width));
+      const clampedTouchY = Math.max(offset.y, Math.min(rawY, offset.y + rendered.height));
+      
       setTouchPosition({
-        x: clientX - containerRect.left,
-        y: clientY - containerRect.top,
+        x: clampedTouchX,
+        y: clampedTouchY,
       });
 
-      const newCoord = screenToCanonical(clientX, clientY);
+      // Use allowClamp=true when dragging so coordinates clamp to edges
+      const newCoord = screenToCanonical(clientX, clientY, true);
       if (newCoord) {
         onCoordSelect(newCoord);
       }
@@ -260,8 +274,9 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
     <div
       ref={containerRef}
       className={`
-        relative w-full h-[65vh] min-h-[300px]
-        bg-slate-950
+        relative w-full h-full
+        bg-[hsl(var(--secondary))]/50 rounded-2xl overflow-hidden
+        border border-[hsl(var(--border))]/30
         select-none touch-none
         ${!isDisabled ? 'cursor-crosshair' : 'cursor-not-allowed'}
       `}
@@ -273,12 +288,24 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
       onTouchMove={handlePointerMove}
       onTouchEnd={handlePointerUp}
     >
+      {/* Subtle grid overlay */}
+      <div 
+        className="absolute inset-0 opacity-5 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
+                           linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
+          backgroundSize: "40px 40px"
+        }}
+      />
+
       {/* Loading skeleton */}
       {!imageLoaded && imageUrl && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-full border-4 border-slate-700 border-t-purple-500 animate-spin" />
-            <span className="text-slate-500 text-sm">Loading image...</span>
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[hsl(var(--primary))]/20 border-2 border-[hsl(var(--primary))]/50 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))] animate-pulse" />
+            </div>
+            <p className="text-[hsl(var(--muted-foreground))] text-sm">Loading...</p>
           </div>
         </div>
       )}
