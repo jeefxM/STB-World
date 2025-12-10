@@ -31,7 +31,33 @@ const HomeContent: React.FC<HomeContentProps> = ({
   return (
     <>
       {/* Header Section */}
-      <div className="px-4 pt-6 pb-3 text-center space-y-2">
+      <div className="px-4 pt-6 pb-3 text-center space-y-3">
+        {/* Game Type Toggle */}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all bg-[#1de5d1] text-black border-2 border-[#1de5d1] shadow-lg shadow-[#1de5d1]/20"
+          >
+            <Image
+              src="/logo/worldcoin-logo.png"
+              alt="WLD"
+              width={20}
+              height={20}
+              className="rounded-full"
+            />
+            <span>WLD Game</span>
+          </button>
+          <button
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border-2 border-[hsl(var(--border))] hover:border-[#2775CA] hover:text-[#2775CA]"
+            onClick={() => {
+              // TODO: Navigate to USDC game when available
+              alert("USDC Game coming soon!");
+            }}
+          >
+            <span className="w-5 h-5 rounded-full bg-[#2775CA] text-white text-xs font-bold flex items-center justify-center">$</span>
+            <span>USDC Game</span>
+          </button>
+        </div>
+
         {/* Round Badge */}
         <div className="inline-flex items-center gap-2 bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] px-3 py-1.5 rounded-full text-xs font-medium border border-[hsl(var(--accent))]/20">
           <Sparkles className="w-3 h-3" />
@@ -48,11 +74,11 @@ const HomeContent: React.FC<HomeContentProps> = ({
         </h1>
 
         {/* Subtitle */}
-        <p className="text-[hsl(var(--muted-foreground))] text-sm">
+        {/* <p className="text-[hsl(var(--muted-foreground))] text-sm">
           Win up to{" "}
           <span className="text-[hsl(var(--accent))] font-semibold">{maxPrize} WLD</span>{" "}
           in prizes!
-        </p>
+        </p> */}
       </div>
 
       {/* Prize Pool Stats */}
@@ -77,24 +103,28 @@ const HomeContent: React.FC<HomeContentProps> = ({
           {/* Dark overlay for better contrast */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50 z-10" />
           
-          {/* Question Mark Overlay */}
+          {/* Play Button Overlay - Center of image */}
           <div className="absolute inset-0 flex items-center justify-center z-20">
             <div className="relative">
               {/* Static rings */}
-              <div className="absolute -inset-8 rounded-full border-2 border-[hsl(var(--primary))]/20" />
-              <div className="absolute -inset-4 rounded-full border border-[hsl(var(--primary))]/40" />
+              <div className="absolute -inset-12 rounded-full border-2 border-[#1de5d1]/20" />
+              <div className="absolute -inset-6 rounded-full border border-[#1de5d1]/40" />
               
-              {/* Question mark container */}
-              <div className="relative w-24 h-24 rounded-full bg-[hsl(var(--card))]/80 backdrop-blur-md border border-[hsl(var(--primary))]/50 flex items-center justify-center glow-primary">
-                <span className="text-5xl font-display font-bold text-[hsl(var(--primary))]">?</span>
-              </div>
+              {/* Play button container */}
+              <Button
+                onClick={onPlay}
+                className="relative w-28 h-28 rounded-full bg-[#1de5d1]! text-black! hover:bg-[#1de5d1]/90! backdrop-blur-md border-2 border-white/30 flex flex-col items-center justify-center gap-1 shadow-2xl glow-primary"
+              >
+                <Play className="w-10 h-10 fill-current" />
+                <span className="text-sm font-bold tracking-wide">PLAY</span>
+              </Button>
             </div>
           </div>
           
           {/* "Find the ball" text */}
           <div className="absolute bottom-20 left-0 right-0 text-center z-20">
-            <p className="text-white/80 text-sm font-medium drop-shadow-lg">
-              Where is the ball hiding?
+            <p className="text-white/90 text-sm font-medium drop-shadow-lg">
+              Guess where the ball is and win <span className="text-[#1de5d1] font-bold">{maxPrize} WLD</span>!
             </p>
           </div>
           
@@ -103,15 +133,6 @@ const HomeContent: React.FC<HomeContentProps> = ({
           <div className="absolute top-3 right-3 w-4 h-4 border-r-2 border-t-2 border-[hsl(var(--primary))]/50 rounded-tr-sm z-20" />
           <div className="absolute bottom-3 left-3 w-4 h-4 border-l-2 border-b-2 border-[hsl(var(--primary))]/50 rounded-bl-sm z-20" />
           <div className="absolute bottom-3 right-3 w-4 h-4 border-r-2 border-b-2 border-[hsl(var(--primary))]/50 rounded-br-sm z-20" />
-
-          {/* Play Button - Bottom right corner */}
-          <Button
-            onClick={onPlay}
-            className="absolute bottom-4 right-4 rounded-full w-16 h-16 flex-col gap-0.5 z-30 shadow-lg bg-[#1de5d1]! text-black! hover:bg-[#1de5d1]/90!"
-          >
-            <Play className="w-6 h-6 fill-current" />
-            <span className="text-[9px] font-bold tracking-wide">PLAY</span>
-          </Button>
         </div>
       </div>
     </>

@@ -339,7 +339,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-emerald-400">Guess Submitted!</p>
-              <p className="text-xs text-emerald-400/70">Good luck! Check your submissions below.</p>
+             
             </div>
           </div>
         </div>

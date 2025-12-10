@@ -43,7 +43,7 @@ const PrizePool: React.FC<PrizePoolProps> = ({
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-[hsl(var(--muted-foreground))] font-medium">
-              Mint Price
+              Submission Price
             </p>
             <p className="font-display font-bold text-lg text-[hsl(var(--primary))] leading-tight truncate">
               {isLoading ? (

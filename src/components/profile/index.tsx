@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Marble } from "@worldcoin/mini-apps-ui-kit-react";
@@ -11,8 +12,11 @@ import {
   XCircle,
   ChevronRight,
   User,
-  X
+  X,
+  TreePine,
+  Play
 } from "lucide-react";
+import { Button } from "@/components/core/ui/Button";
 
 interface Submission {
   id: string;
@@ -35,11 +39,15 @@ interface ProfileStats {
 }
 
 export const Profile = () => {
+  const router = useRouter();
   const { data: session } = useSession();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState<ProfileStats>({ totalGuesses: 0, wins: 0, wldWon: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+
+  // Calculate total contribution (each guess = 0.01 WLD, 20% goes to Silvia)
+  const totalContribution = (stats.totalGuesses * 0.01 * 0.2).toFixed(3);
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -143,6 +151,34 @@ export const Profile = () => {
             </p>
           </div>
         </div>
+
+        {/* Silvia Contribution Card */}
+        {stats.totalGuesses > 0 && (
+          <div className="glass-card p-4 border border-emerald-500/20 bg-emerald-500/5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <TreePine className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-[hsl(var(--foreground))]">
+                  You contributed <span className="font-bold text-emerald-400">{totalContribution} WLD</span> to Silvia
+                </p>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Supporting global reforestation 🌍
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Play Current Game Button */}
+        <Button
+          onClick={() => router.push("/game/game-wld")}
+          className="w-full gap-2 bg-[#1de5d1]! text-black! hover:bg-[#1de5d1]/90!"
+        >
+          <Play className="w-5 h-5 fill-current" />
+          <span className="font-bold">Play This Week&apos;s Game</span>
+        </Button>
 
         {/* Your Guesses Section */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -385,10 +421,26 @@ const SubmissionDetailModal: React.FC<{
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-[hsl(var(--border))] text-center">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {getRelativeTime(submission.created_at)}
-          </p>
+        <div className="p-4 border-t border-[hsl(var(--border))] space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-[hsl(var(--muted-foreground))]">
+              {getRelativeTime(submission.created_at)}
+            </span>
+            {submission.game_name && (
+              <span className="text-[hsl(var(--foreground))] font-medium">
+                {submission.game_name}
+              </span>
+            )}
+          </div>
+          
+          {/* Play Again Button for this specific game */}
+          <a
+            href={`/game/game-wld`}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#1de5d1] text-black font-bold hover:bg-[#1de5d1]/90 transition-colors"
+          >
+            <Play className="w-5 h-5 fill-current" />
+            <span>Play Again</span>
+          </a>
         </div>
       </div>
     </div>

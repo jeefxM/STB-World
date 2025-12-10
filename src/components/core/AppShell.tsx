@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2, Wallet } from "lucide-react";
 import { walletAuth } from "@/auth/wallet";
 import { useMiniKit } from "@worldcoin/minikit-js/minikit-provider";
+import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import BottomNav from "./BottomNav";
 import HomeContent from "@/components/screens/HomeContent";
 import LeaderboardScreen from "@/components/screens/LeaderboardScreen";
@@ -35,6 +36,7 @@ const AppShell: React.FC<AppShellProps> = ({ initialTab = "home", gameData }) =>
   const { isInstalled } = useMiniKit();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const hasRequestedNotifications = useRef(false);
 
   // Handle tab query parameter
   useEffect(() => {
@@ -51,6 +53,48 @@ const AppShell: React.FC<AppShellProps> = ({ initialTab = "home", gameData }) =>
   const handlePlay = () => {
     router.push("/game/game-wld");
   };
+
+  // Auto sign-in when not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated" && isInstalled && !isSigningIn) {
+      setIsSigningIn(true);
+      walletAuth()
+        .catch((error) => console.error("Auto sign-in error:", error))
+        .finally(() => setIsSigningIn(false));
+    }
+  }, [status, isInstalled, isSigningIn]);
+
+  // Request notification permission once when authenticated
+  useEffect(() => {
+    const requestNotifications = async () => {
+      if (
+        session && 
+        isInstalled && 
+        !hasRequestedNotifications.current &&
+        MiniKit.isInstalled()
+      ) {
+        hasRequestedNotifications.current = true;
+        
+        try {
+          const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
+            permission: Permission.Notifications,
+          });
+          
+          if (finalPayload.status === "success") {
+            console.log("✅ Notification permission granted");
+          } else {
+            console.log("ℹ️ Notification permission:", finalPayload);
+          }
+        } catch (error) {
+          console.error("Notification permission error:", error);
+        }
+      }
+    };
+
+    // Small delay to let the UI settle before showing permission modal
+    const timer = setTimeout(requestNotifications, 2000);
+    return () => clearTimeout(timer);
+  }, [session, isInstalled]);
 
   const handleSignIn = async () => {
     if (!isInstalled || isSigningIn) return;
