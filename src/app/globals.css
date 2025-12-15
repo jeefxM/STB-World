@@ -1,0 +1,267 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+/* ========================================
+   DESIGN SYSTEM - GAMING THEME
+   ======================================== */
+
+:root {
+  /* Core Colors - Dark Gaming Theme */
+  --background: 220 20% 6%;
+  --foreground: 210 40% 98%;
+
+  --card: 220 18% 10%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 220 18% 10%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 174 80% 50%;
+  --primary-foreground: 220 20% 6%;
+
+  --secondary: 220 18% 15%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 220 15% 18%;
+  --muted-foreground: 215 20% 55%;
+
+  --accent: 45 100% 55%;
+  --accent-foreground: 220 20% 6%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 220 15% 20%;
+  --input: 220 15% 20%;
+  --ring: 174 80% 50%;
+
+  --radius: 1rem;
+
+  /* Custom Gaming Tokens */
+  --prize-gold: 45 100% 55%;
+  --prize-gold-glow: 45 100% 65%;
+  --success: 142 76% 45%;
+  --game-cyan: 174 80% 50%;
+  --game-cyan-glow: 174 90% 60%;
+  --game-purple: 270 70% 60%;
+
+  /* Gradient Definitions */
+  --gradient-prize: linear-gradient(135deg, hsl(45 100% 55%), hsl(35 100% 50%));
+  --gradient-primary: linear-gradient(135deg, hsl(174 80% 50%), hsl(174 90% 40%));
+  --gradient-card: linear-gradient(180deg, hsl(220 18% 12%), hsl(220 18% 8%));
+  --gradient-game-bg: radial-gradient(ellipse at top, hsl(220 20% 10%), hsl(220 20% 4%));
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+* {
+  border-color: hsl(var(--border));
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display Font */
+.font-display {
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* ========================================
+   COMPONENT CLASSES
+   ======================================== */
+
+/* Glass Card Effect */
+.glass-card {
+  background: hsl(var(--card) / 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 1rem;
+}
+
+/* Primary Glow Effect */
+.glow-primary {
+  box-shadow: 
+    0 0 30px hsl(var(--primary) / 0.3), 
+    0 0 60px hsl(var(--primary) / 0.1);
+}
+
+/* Accent (Gold) Glow Effect */
+.glow-accent {
+  box-shadow: 
+    0 0 30px hsl(var(--accent) / 0.4), 
+    0 0 60px hsl(var(--accent) / 0.2);
+}
+
+/* ========================================
+   TEXT GRADIENT UTILITIES
+   ======================================== */
+
+.text-gradient-prize {
+  background: var(--gradient-prize);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.prize-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--accent)) 0%,
+    hsl(var(--prize-gold-glow)) 50%,
+    hsl(var(--accent)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
+   BACKGROUND UTILITIES
+   ======================================== */
+
+.bg-game {
+  background: var(--gradient-game-bg);
+}
+
+.bg-card-gradient {
+  background: var(--gradient-card);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% { 
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+/* ========================================
+   CUSTOM UTILITIES
+   ======================================== */
+
+/* Safe area padding for bottom nav */
+.pb-safe {
+  padding-bottom: max(5rem, env(safe-area-inset-bottom));
+}
+
+/* Canvas Grid Overlay */
+.canvas-grid {
+  background-image: 
+    linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Loading Bar Animation */
+@keyframes loading-bar {
+  0% {
+    width: 0%;
+    transform: translateX(0);
+  }
+  50% {
+    width: 70%;
+    transform: translateX(0);
+  }
+  100% {
+    width: 100%;
+    transform: translateX(100%);
+  }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
