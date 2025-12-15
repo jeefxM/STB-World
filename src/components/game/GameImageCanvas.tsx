@@ -340,17 +340,17 @@ export const GameImageCanvas: React.FC<GameImageCanvasProps> = ({
         >
           {/* Crosshair lines - centered on the point */}
           <div
-            className="absolute bg-red-500"
+            className="absolute bg-red-500 w-[32px] h-[2px] left-[-16px] top-[-1px]"
             style={{ width: '32px', height: '2px', left: '-16px', top: '-1px' }}
           />
           <div
-            className="absolute bg-red-500"
-            style={{ width: '2px', height: '32px', left: '-1px', top: '-16px' }}
+            className="absolute bg-red-500 w-[2px] h-[32px] left-[-1px] top-[-16px]"
+            
           />
           {/* Center dot - exactly centered */}
           <div
-            className="absolute bg-red-500 rounded-full border border-white"
-            style={{ width: '8px', height: '8px', left: '-4px', top: '-4px' }}
+            className="absolute bg-red-500 rounded-full border border-white w-[8px] h-[8px] left-[-4px] top-[-4px]"
+            
           />
         </div>
       )}
