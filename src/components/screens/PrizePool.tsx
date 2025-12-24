@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { Trophy, Target } from "lucide-react";
-import { useReadContract } from "wagmi";
-import { formatEther } from "viem";
+import { createPublicClient, http, formatEther } from "viem";
+import { worldchain } from "viem/chains";
 import GameABI from "@/abi/gameABI";
 import { getGameUUID } from "@/config/gameIdMap";
 
@@ -13,78 +13,101 @@ interface GameInfo {
   total_submissions: number;
 }
 
+// Create a public client for reading from the blockchain
+const publicClient = createPublicClient({
+  chain: worldchain,
+  transport: http(),
+});
+
 /**
  * PrizePool component - Fetches prize pool and mint price from the blockchain
- * Falls back to props if blockchain fetch fails
+ * Uses viem directly instead of wagmi for compatibility with MiniKit
  */
 const PrizePool: React.FC = () => {
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
-  const [isLoadingGame, setIsLoadingGame] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [prizePool, setPrizePool] = useState<string>("0");
+  const [mintPrice, setMintPrice] = useState<string>("0");
+  const [isFree, setIsFree] = useState(false);
+  const [tokenSymbol, setTokenSymbol] = useState("WLD");
 
-  // Fetch game info (including contract address) on mount
+  // Fetch game info and contract data on mount
   useEffect(() => {
-    const fetchGameInfo = async () => {
+    const fetchData = async () => {
       try {
+        // Step 1: Get game info from API
         const gameUUID = getGameUUID('game-wld');
         const response = await fetch(`/api/game?gameId=${gameUUID}`);
-        if (response.ok) {
-          const data = await response.json();
-          setGameInfo(data);
+        
+        if (!response.ok) {
+          console.error("Failed to fetch game info");
+          setIsLoading(false);
+          return;
         }
+        
+        const data = await response.json();
+        setGameInfo(data);
+        
+        const contractAddress = data.contract_address as `0x${string}`;
+        
+        if (!contractAddress) {
+          console.error("No contract address found");
+          setIsLoading(false);
+          return;
+        }
+
+        // Step 2: Fetch data from blockchain using viem
+        const [prizePoolRaw, mintPriceRaw, paymentToken] = await Promise.all([
+          publicClient.readContract({
+            address: contractAddress,
+            abi: GameABI,
+            functionName: "prizePool",
+          }),
+          publicClient.readContract({
+            address: contractAddress,
+            abi: GameABI,
+            functionName: "mintPrice",
+          }),
+          publicClient.readContract({
+            address: contractAddress,
+            abi: GameABI,
+            functionName: "paymentToken",
+          }),
+        ]);
+
+        // Determine if native payment
+        const isNativePayment = !paymentToken || paymentToken === "0x0000000000000000000000000000000000000000";
+        const symbol = isNativePayment ? "WLD" : "USDC";
+        const decimals = isNativePayment ? 18 : 6;
+
+        setTokenSymbol(symbol);
+
+        // Format prize pool
+        const formattedPrizePool = formatValue(prizePoolRaw as bigint, decimals);
+        setPrizePool(formattedPrizePool);
+
+        // Format mint price
+        const mintPriceBigInt = mintPriceRaw as bigint;
+        setIsFree(mintPriceBigInt === BigInt(0));
+        const formattedMintPrice = formatValue(mintPriceBigInt, decimals);
+        setMintPrice(formattedMintPrice);
+
       } catch (error) {
-        console.error("Error fetching game info:", error);
+        console.error("Error fetching blockchain data:", error);
       } finally {
-        setIsLoadingGame(false);
+        setIsLoading(false);
       }
     };
 
-    fetchGameInfo();
+    fetchData();
   }, []);
 
-  const contractAddress = gameInfo?.contract_address as `0x${string}` | undefined;
-
-  // Fetch prize pool from contract
-  const { data: prizePoolRaw, isLoading: isPrizePoolLoading } = useReadContract({
-    address: contractAddress,
-    abi: GameABI,
-    functionName: "prizePool",
-    query: {
-      enabled: !!contractAddress,
-    },
-  });
-
-  // Fetch mint price from contract
-  const { data: mintPriceRaw, isLoading: isMintPriceLoading } = useReadContract({
-    address: contractAddress,
-    abi: GameABI,
-    functionName: "mintPrice",
-    query: {
-      enabled: !!contractAddress,
-    },
-  });
-
-  // Fetch payment token to determine if it's ETH or ERC20
-  const { data: paymentToken } = useReadContract({
-    address: contractAddress,
-    abi: GameABI,
-    functionName: "paymentToken",
-    query: {
-      enabled: !!contractAddress,
-    },
-  });
-
-  const isLoading = isLoadingGame || isPrizePoolLoading || isMintPriceLoading;
-
-  // Check if native ETH payment (address(0))
-  const isNativePayment = !paymentToken || paymentToken === "0x0000000000000000000000000000000000000000";
-
-  // Format the values
+  // Format bigint values
   const formatValue = (value: bigint | undefined, decimals: number = 18): string => {
     if (!value) return "0";
     
     if (decimals === 18) {
       const formatted = formatEther(value);
-      // Show up to 4 decimal places
       const num = parseFloat(formatted);
       if (num < 0.0001 && num > 0) return "< 0.0001";
       return num.toFixed(4).replace(/\.?0+$/, '');
@@ -96,22 +119,12 @@ const PrizePool: React.FC = () => {
     }
   };
 
-  // Determine token symbol and decimals
-  const tokenSymbol = isNativePayment ? "WLD" : "USDC";
-  const decimals = isNativePayment ? 18 : 6;
-
-  const prizePool = formatValue(prizePoolRaw as bigint | undefined, decimals);
-  const mintPrice = formatValue(mintPriceRaw as bigint | undefined, decimals);
-  
-  // Check if mint price is 0 (free)
-  const isFree = mintPriceRaw !== undefined && mintPriceRaw === BigInt(0);
-
   return (
     <div className="px-4 py-2">
       <div className="flex gap-3">
         {/* Prize Pool Card */}
         <div className="flex-1 glass-card p-3 flex items-center gap-3 border-[hsl(var(--accent))]/30">
-          <div className="w-10 h-10 rounded-xl bg-[hsl(var(--accent))]/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[hsl(var(--accent))]/20 flex items-center justify-center shrink-0">
             <Trophy className="w-5 h-5 text-[hsl(var(--accent))]" />
           </div>
           <div className="min-w-0">
@@ -130,7 +143,7 @@ const PrizePool: React.FC = () => {
 
         {/* Mint Price Card */}
         <div className="flex-1 glass-card p-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[hsl(var(--primary))]/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[hsl(var(--primary))]/20 flex items-center justify-center shrink-0">
             <Target className="w-5 h-5 text-[hsl(var(--primary))]" />
           </div>
           <div className="min-w-0">
