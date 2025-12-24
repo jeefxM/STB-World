@@ -9,9 +9,6 @@ import PrizePool from "./PrizePool";
 interface HomeContentProps {
   roundNumber?: number;
   playerCount?: number;
-  prizePool?: string;
-  mintPrice?: string;
-  maxPrize?: string;
   imageUrl?: string;
   onPlay?: () => void;
 }
@@ -19,14 +16,12 @@ interface HomeContentProps {
 const HomeContent: React.FC<HomeContentProps> = ({
   roundNumber = 42,
   playerCount = 156,
-  prizePool = "2.5",
-  mintPrice = "0.01",
-  maxPrize = "2.5",
   imageUrl,
   onPlay,
 }) => {
   // Hardcoded image for now
-  const gameImageUrl = "https://uvfyaykcpsggbabxbuzb.supabase.co/storage/v1/object/public/game-images/edadef06-167f-44a5-9a0a-7a07057967ab/challenge.jpg";
+  const gameImageUrl = imageUrl || "https://uvfyaykcpsggbabxbuzb.supabase.co/storage/v1/object/public/game-images/edadef06-167f-44a5-9a0a-7a07057967ab/challenge.jpg";
+
 
   return (
     <>
@@ -47,14 +42,12 @@ const HomeContent: React.FC<HomeContentProps> = ({
             <span>WLD Game</span>
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border-2 border-[hsl(var(--border))] hover:border-[#2775CA] hover:text-[#2775CA]"
-            onClick={() => {
-              // TODO: Navigate to USDC game when available
-              alert("USDC Game coming soon!");
-            }}
+            className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] border-2 border-[hsl(var(--border))] opacity-60 cursor-not-allowed"
+            disabled
           >
             <span className="w-5 h-5 rounded-full bg-[#2775CA] text-white text-xs font-bold flex items-center justify-center">$</span>
-            <span>USDC Game</span>
+            <span>USDC</span>
+            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-amber-500 text-black text-[10px] font-bold rounded-full">Soon</span>
           </button>
         </div>
 
@@ -68,7 +61,7 @@ const HomeContent: React.FC<HomeContentProps> = ({
 
         {/* Title */}
         <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] leading-tight">
-          Can you guess where
+          Can you figure out where
           <br />
           <span className="text-gradient-primary">the ball is?</span>
         </h1>
@@ -81,8 +74,8 @@ const HomeContent: React.FC<HomeContentProps> = ({
         </p> */}
       </div>
 
-      {/* Prize Pool Stats */}
-      <PrizePool prizePool={prizePool} mintPrice={mintPrice} />
+      {/* Prize Pool Stats - Fetches from contract directly */}
+      <PrizePool />
 
       {/* Canvas Area with Play Button - FIXED HEIGHT */}
       <div className="flex-1 px-4 py-3">
@@ -124,7 +117,7 @@ const HomeContent: React.FC<HomeContentProps> = ({
           {/* "Find the ball" text */}
           <div className="absolute bottom-20 left-0 right-0 text-center z-20">
             <p className="text-white/90 text-sm font-medium drop-shadow-lg">
-              Guess where the ball is and win <span className="text-[#1de5d1] font-bold">{maxPrize} WLD</span>!
+              Pick where the ball is and <span className="text-[#1de5d1] font-bold">WIN!</span>
             </p>
           </div>
           

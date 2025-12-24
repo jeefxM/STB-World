@@ -88,7 +88,7 @@ export async function GET(
       return new NextResponse('Invalid token ID', { status: 400 });
     }
 
-    const gameName = process.env.NEXT_PUBLIC_GAME_NAME || 'Spot The Ball';
+    const gameName = process.env.NEXT_PUBLIC_GAME_NAME || 'STB Game Entry';
     const { xPoint, yPoint } = decodeTokenId(tokenId);
     const svg = generateSVG(xPoint, yPoint, gameName);
 

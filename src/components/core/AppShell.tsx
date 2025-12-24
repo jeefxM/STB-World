@@ -18,8 +18,6 @@ type TabType = "home" | "profile" | "leaderboard" | "help";
 
 interface GameData {
   imageUrl: string;
-  prizePool: string;
-  mintPrice: string;
   playerCount: number;
   roundNumber: number;
 }
@@ -179,10 +177,8 @@ const AppShell: React.FC<AppShellProps> = ({ initialTab = "home", gameData }) =>
           <HomeContent 
             onPlay={handlePlay}
             imageUrl={gameData?.imageUrl}
-            prizePool={gameData?.prizePool || "2.5"}
-            mintPrice={gameData?.mintPrice || "0.01"}
-            playerCount={gameData?.playerCount || 156}
-            roundNumber={gameData?.roundNumber || 42}
+            playerCount={gameData?.playerCount || 0}
+            roundNumber={gameData?.roundNumber || 1}
           />
         );
       case "leaderboard":

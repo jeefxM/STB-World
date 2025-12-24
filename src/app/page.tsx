@@ -5,8 +5,6 @@ import AppShell from "@/components/core/AppShell";
 // Game data interface
 interface GameDataProps {
   imageUrl: string;
-  prizePool: string;
-  mintPrice: string;
   playerCount: number;
   roundNumber: number;
 }
@@ -22,10 +20,8 @@ export default async function HomePage() {
     if (data && data.challenge_image_url) {
       gameData = {
         imageUrl: data.challenge_image_url,
-        prizePool: "2.5", // TODO: fetch from contract
-        mintPrice: "0.01", // TODO: fetch from contract
-        playerCount: data.total_submissions || 0, // Player count from games table
-        roundNumber: 1, // Round 1
+        playerCount: data.total_submissions || 0,
+        roundNumber: 1,
       };
     }
   } catch (error) {
@@ -34,3 +30,4 @@ export default async function HomePage() {
 
   return <AppShell gameData={gameData} />;
 }
+

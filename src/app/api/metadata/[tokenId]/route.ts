@@ -63,7 +63,7 @@ export async function GET(
 
     // Get game name from env
     const gameName = process.env.NEXT_PUBLIC_GAME_NAME || 'Spot The Ball';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://spottheball.world';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stb-world.vercel.app';
 
     // Decode the token ID to get coordinates
     const { xPoint, yPoint, timestamp, minter } = decodeTokenId(tokenId);
@@ -79,10 +79,11 @@ export async function GET(
     // Shorten minter address for display
     const shortMinter = `${minter.slice(0, 6)}...${minter.slice(-4)}`;
 
-    // Create metadata with game name
+    // Create metadata with descriptive name for wallet display
+    // The name will appear in wallet confirmation dialogs instead of generic "+1 NFT"
     const metadata: NFTMetadata = {
-      name: gameName,
-      description: `Entry for ${gameName}. Good luck!`,
+      name: `STB Game Entry`,
+      description: `Your entry for ${gameName}. Coordinates submitted - may the best guess win! 🎯`,
       image: `${appUrl}/api/metadata/${tokenId}/image`,
       external_url: `${appUrl}/game`,
       attributes: [
