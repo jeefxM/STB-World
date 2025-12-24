@@ -73,7 +73,7 @@ const HelpContent: React.FC = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Icon Container */}
-                <div className="w-12 h-12 d rounded-xl bg-[hsl(var(--primary))]/20 flex items-center justify-center shrink-0 border border-[hsl(var(--primary))]/20">
+                <div className="w-12 h-12 rounded-xl bg-[hsl(var(--primary))]/20 flex items-center justify-center shrink-0 border border-[hsl(var(--primary))]/20">
                   <Icon className="w-6 h-6 text-[hsl(var(--primary))]" />
                 </div>
 
