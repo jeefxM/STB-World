@@ -174,11 +174,9 @@ const AppShell: React.FC<AppShellProps> = ({ initialTab = "home", gameData }) =>
     switch (activeTab) {
       case "home":
         return (
-          <HomeContent 
+          <HomeContent
             onPlay={handlePlay}
             imageUrl={gameData?.imageUrl}
-            playerCount={gameData?.playerCount || 0}
-            roundNumber={gameData?.roundNumber || 1}
           />
         );
       case "leaderboard":

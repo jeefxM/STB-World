@@ -7,6 +7,9 @@ import { worldchain } from "viem/chains";
 import GameABI from "@/abi/gameABI";
 import { getGameUUID } from "@/config/gameIdMap";
 
+// Known token addresses on World Chain
+const USDC_ADDRESS = "0x79A02482A880bCE3F13e09Da970dC34db4CD24d1".toLowerCase();
+
 interface GameInfo {
   contract_address: string;
   name: string;
@@ -75,10 +78,12 @@ const PrizePool: React.FC = () => {
           }),
         ]);
 
-        // Determine if native payment
-        const isNativePayment = !paymentToken || paymentToken === "0x0000000000000000000000000000000000000000";
-        const symbol = isNativePayment ? "WLD" : "USDC";
-        const decimals = isNativePayment ? 18 : 6;
+        // Determine token type based on address
+        const tokenAddress = (paymentToken as string)?.toLowerCase() || "";
+        const isUSDC = tokenAddress === USDC_ADDRESS;
+        // WLD and other tokens use 18 decimals, USDC uses 6
+        const symbol = isUSDC ? "USDC" : "WLD";
+        const decimals = isUSDC ? 6 : 18;
 
         setTokenSymbol(symbol);
 

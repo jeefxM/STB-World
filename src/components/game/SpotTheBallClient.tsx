@@ -282,7 +282,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
       setTransactionState("error");
       setErrorMessage(err instanceof Error ? err.message : "Transaction failed");
     }
-  }, [coord, gameData.contractAddress, mintPrice, paymentToken]);
+  }, [coord, gameData.contractAddress, mintPrice, paymentToken, gameId, router, session?.user?.walletAddress]);
 
   return (
     <div className="flex flex-col min-h-screen bg-game">
