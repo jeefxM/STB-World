@@ -2,20 +2,16 @@
 
 import React from "react";
 import Image from "next/image";
-import { Play, Sparkles } from "lucide-react";
+import { Play } from "lucide-react";
 import { Button } from "@/components/core/ui/Button";
 import PrizePool from "./PrizePool";
 
 interface HomeContentProps {
-  roundNumber?: number;
-  playerCount?: number;
   imageUrl?: string;
   onPlay?: () => void;
 }
 
 const HomeContent: React.FC<HomeContentProps> = ({
-  roundNumber = 42,
-  playerCount = 156,
   imageUrl,
   onPlay,
 }) => {
@@ -49,14 +45,6 @@ const HomeContent: React.FC<HomeContentProps> = ({
             <span>USDC</span>
             <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-amber-500 text-black text-[10px] font-bold rounded-full">Soon</span>
           </button>
-        </div>
-
-        {/* Round Badge */}
-        <div className="inline-flex items-center gap-2 bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] px-3 py-1.5 rounded-full text-xs font-medium border border-[hsl(var(--accent))]/20">
-          <Sparkles className="w-3 h-3" />
-          <span>
-            Round #{roundNumber} • {playerCount} players
-          </span>
         </div>
 
         {/* Title */}

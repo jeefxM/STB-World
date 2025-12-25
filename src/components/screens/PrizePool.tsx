@@ -102,18 +102,32 @@ const PrizePool: React.FC = () => {
     fetchData();
   }, []);
 
-  // Format bigint values
-  const formatValue = (value: bigint | undefined, decimals: number = 18): string => {
-    if (!value) return "0";
-    
+  // Format bigint values - handles both native (18 decimals) and ERC20 tokens (e.g., USDC with 6 decimals)
+  const formatValue = (value: bigint | number | string | undefined, decimals: number = 18): string => {
+    if (value === undefined || value === null) return "0";
+
+    // Convert to bigint if needed
+    let bigintValue: bigint;
+    try {
+      bigintValue = typeof value === 'bigint' ? value : BigInt(value.toString());
+    } catch {
+      return "0";
+    }
+
+    if (bigintValue === BigInt(0)) return "0";
+
     if (decimals === 18) {
-      const formatted = formatEther(value);
+      const formatted = formatEther(bigintValue);
       const num = parseFloat(formatted);
       if (num < 0.0001 && num > 0) return "< 0.0001";
       return num.toFixed(4).replace(/\.?0+$/, '');
     } else {
       // For tokens like USDC (6 decimals)
-      const num = Number(value) / Math.pow(10, decimals);
+      const divisor = BigInt(10 ** decimals);
+      const wholePart = bigintValue / divisor;
+      const fractionalPart = bigintValue % divisor;
+      const fractionalStr = fractionalPart.toString().padStart(decimals, '0').slice(0, 2);
+      const num = parseFloat(`${wholePart}.${fractionalStr}`);
       if (num < 0.01 && num > 0) return "< 0.01";
       return num.toFixed(2);
     }
