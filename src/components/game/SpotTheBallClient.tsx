@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, erc20Abi } from "viem";
 import { worldchain } from "viem/chains";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { ArrowLeft } from "lucide-react";
@@ -59,6 +59,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);
+  const [userBalance, setUserBalance] = useState<bigint | null>(null);
 
   // Game state
   const [coord, setCoord] = useState<Coordinate | null>(null);
@@ -68,17 +69,32 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
   // Submissions tracking
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const hasLoadedContractData = useRef(false);
+  const lastContractAddress = useRef<string | null>(null);
 
   // Fetch contract data (client-side for real-time data)
   useEffect(() => {
     const readContractData = async () => {
-      if (hasLoadedContractData.current || !gameData.contractAddress) {
+      if (!gameData.contractAddress) {
         return;
       }
 
+      // Skip if already loaded for THIS contract address
+      if (lastContractAddress.current === gameData.contractAddress) {
+        return;
+      }
+
+      // Reset state when switching to a different contract
+      if (lastContractAddress.current !== null && lastContractAddress.current !== gameData.contractAddress) {
+        setIsLoadingContract(true);
+        setMintPrice(null);
+        setGameStatus(null);
+        setPrizePool(null);
+        setPaymentToken(null);
+        setUserBalance(null);
+      }
+
       try {
-        hasLoadedContractData.current = true;
+        lastContractAddress.current = gameData.contractAddress;
 
         const [price, status, pool, tokenAddress] = await Promise.all([
           publicClient.readContract({
@@ -109,7 +125,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
         setPaymentToken(tokenAddress as string);
       } catch (e) {
         console.error("Contract read error:", e);
-        hasLoadedContractData.current = false;
+        lastContractAddress.current = null; // Allow retry on error
       } finally {
         setIsLoadingContract(false);
       }
@@ -117,6 +133,42 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
 
     readContractData();
   }, [gameData.contractAddress]);
+
+  // Fetch user's balance when wallet address and payment token are available
+  useEffect(() => {
+    const fetchUserBalance = async () => {
+      if (!session?.user?.walletAddress || !paymentToken || mintPrice === null) {
+        return;
+      }
+
+      try {
+        const isNativePayment = paymentToken === "0x0000000000000000000000000000000000000000";
+        let balance: bigint;
+
+        if (isNativePayment) {
+          // Get native WLD balance
+          balance = await publicClient.getBalance({
+            address: session.user.walletAddress as `0x${string}`,
+          });
+        } else {
+          // Get ERC20 token balance
+          balance = await publicClient.readContract({
+            address: paymentToken as `0x${string}`,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [session.user.walletAddress as `0x${string}`],
+          }) as bigint;
+        }
+
+        setUserBalance(balance);
+        console.log(`💰 User Balance: ${balance.toString()} (Required: ${mintPrice.toString()})`);
+      } catch (error) {
+        console.error("Error fetching user balance:", error);
+      }
+    };
+
+    fetchUserBalance();
+  }, [session?.user?.walletAddress, paymentToken, mintPrice]);
 
   const handleCoordSelect = useCallback((newCoord: Coordinate) => {
     setCoord(newCoord);
@@ -137,6 +189,19 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
   const handleSubmit = useCallback(async () => {
     if (!coord || !gameData.contractAddress || !mintPrice || paymentToken === null) {
       console.error("Missing required data");
+      return;
+    }
+
+    // Check if user has enough balance
+    if (userBalance !== null && userBalance < mintPrice) {
+      const isNativePayment = paymentToken === "0x0000000000000000000000000000000000000000";
+      const tokenSymbol = isNativePayment ? "WLD" : "tokens";
+      
+      setTransactionState("error");
+      setErrorMessage(
+        `Insufficient balance. You need at least ${(Number(mintPrice) / 1e18).toFixed(4)} ${tokenSymbol} to play.`
+      );
+      console.error("❌ Insufficient balance");
       return;
     }
 
@@ -282,7 +347,7 @@ export const SpotTheBallClient: React.FC<SpotTheBallClientProps> = ({
       setTransactionState("error");
       setErrorMessage(err instanceof Error ? err.message : "Transaction failed");
     }
-  }, [coord, gameData.contractAddress, mintPrice, paymentToken, gameId, router, session?.user?.walletAddress]);
+  }, [coord, gameData.contractAddress, mintPrice, paymentToken, gameId, router, session?.user?.walletAddress, userBalance]);
 
   return (
     <div className="flex flex-col min-h-screen bg-game">

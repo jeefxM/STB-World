@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Play } from "lucide-react";
 import { Button } from "@/components/core/ui/Button";
 import PrizePool from "./PrizePool";
+import BalanceChecker from "./BalanceChecker";
 
 interface HomeContentProps {
   imageUrl?: string;
@@ -64,6 +65,9 @@ const HomeContent: React.FC<HomeContentProps> = ({
 
       {/* Prize Pool Stats - Fetches from contract directly */}
       <PrizePool />
+
+      {/* Balance Check - Shows warning if insufficient funds */}
+      <BalanceChecker />
 
       {/* Canvas Area with Play Button - FIXED HEIGHT */}
       <div className="flex-1 px-4 py-3">
